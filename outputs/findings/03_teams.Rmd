@@ -1,0 +1,148 @@
+---
+title: "Team fastballs adjusted spin rate analysis"
+author: Andrew Ba Tran
+output:
+  html_document:
+    code_folding: hide
+---
+
+This team look up is part of The Washington Post Story [How baseball’s war on sticky stuff is already changing the game](https://www.washingtonpost.com/sports/2021/07/02/sticky-stuff-baseball-data/)
+
+More of the methodology of the analysis can be found on [GitHub](https://github.com/wpinvestigative/baseball_spin).
+
+The table lists the average adjusted spin rate (rotations per minute divided by miles per hour) for each time period.
+
+Only players who've thrown at least 20 pitches since June 3 were included in the table.
+
+
+```{r setup, warning=F, message=F}
+knitr::opts_chunk$set(warning = F)
+knitr::opts_chunk$set(message = F)
+
+packages <- c("tidyverse", "readxl", "janitor", "sparkline",
+              "geofacet", "forcats", "lubridate", "DT", "knitr")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos = "http://cran.us.r-project.org")  
+}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(lubridate)
+library(knitr)
+library(sparkline)
+library(DT)
+
+options(knitr.kable.NA = '')
+
+pitches <- read_csv("../../data/clean_data/combined_2017_2021.csv") %>%
+  mutate(pitch_type=case_when(
+    pi_pitch_type=="CH" ~ "changeup",
+    pi_pitch_type=="SI" ~ "sinker",
+    pi_pitch_type=="SL" ~ "slide",
+    pi_pitch_type=="CU" ~ "knuckle curve",
+    pi_pitch_type=="FA" ~ "4-seam fastball",
+    pi_pitch_type=="FC" ~ "cutter",
+    pi_pitch_type=="KN" ~ "knuckleball",
+    pi_pitch_type=="SB" ~ "screwball",
+    pi_pitch_type=="FS" ~ "sinking fastball/splitter",
+    pi_pitch_type=="CS" ~ "curve, slow",
+  ),
+  pitch_results=case_when(
+    pitch_result=="B" ~ "ball",
+    pitch_result=="F" ~ "foul",
+    pitch_result=="FB" ~ "fly ball/popup",
+    pitch_result=="GB" ~ "ground ball",
+    pitch_result=="LD" ~ "line drive",
+    pitch_result=="PU" ~ "fly ball/popup",
+    pitch_result=="S" ~ "strike"
+  ),
+  pitch_outcomes=case_when(
+    pitch_outcome=="1B" ~ "first base",
+    pitch_outcome=="2B" ~ "second base",
+    pitch_outcome=="3B" ~ "third base",
+    pitch_outcome=="B" ~ "ball",
+    pitch_outcome=="F" ~ "foul",
+    pitch_outcome=="HR" ~ "homerun",
+    pitch_outcome=="OUT" ~ "out",
+    pitch_outcome=="S" ~ "strike",
+    pitch_outcome=="HBP" ~ "hit by pitch",
+    pitch_outcome=="NIP" ~ "not in play",
+    pitch_outcome=="RBOE" ~ "reached base on error"
+  )) %>% 
+  mutate(bauer_units=rpm/mph)
+
+team_names_df <- read_csv("../../data/clean_data/team_names.csv") %>% 
+  select(-n)
+
+year_over_year <- pitches %>% 
+  filter(pitch_type=="4-seam fastball") %>% 
+  mutate(when=case_when(
+    year(game_date)==2017 ~ "2017",
+    year(game_date)==2018 ~ "2018",
+    year(game_date)==2019 ~ "2019",
+    year(game_date)==2020 ~ "2020",
+    year(game_date)==2021 & game_date < ymd("2021-06-03") ~ "2021",
+    game_date >= ymd("2021-06-03") ~ "after June 3",
+    TRUE ~ "missing"
+  )) %>% 
+  group_by(when, pitcher_team) %>% 
+  summarize(total=n(),
+            avg_bu=round(mean(bauer_units, na.rm=T),2))
+
+y2021 <- pitches %>% 
+  filter(game_date>=ymd("2021-06-03")) %>% 
+  group_by(pitcher_team) %>% 
+  summarize(total=n()) %>% 
+  filter(total>=20) %>% 
+  ungroup() %>% 
+  unique() %>% 
+  select(pitcher_team) %>% 
+  left_join(team_names_df) 
+
+year_over_year <- year_over_year %>% 
+  #filter(pitcher_name %in% y2021$pitcher_name) %>% 
+  ungroup() %>% 
+  select(-total) %>% 
+  pivot_wider(names_from="when", values_from="avg_bu") %>% 
+  left_join(y2021) %>% 
+  filter(!is.na(`2020`) | !is.na(`2021`)) %>% 
+  select(Team=pitcher_team_name,
+         `2017`, `2018`, `2019`, `2020`, `2021`, `After June 3`=`after June 3`)  %>%
+  mutate(`Change 2021`=round((`After June 3`-`2021`)/`2021`*100,2)) %>% 
+  arrange(Team)
+
+
+tidyyear <- year_over_year %>% 
+  select(-`Change 2021`) %>% 
+  pivot_longer(cols=`2017`:`After June 3`, names_to="time", values_to="rate")
+  
+prices_sparkline_data <- tidyyear %>%
+  group_by(Team) %>%
+  summarize(
+    `2017 - After June 3` = spk_chr(
+      rate, type ="line",
+      chartRangeMin = 100, chartRangeMax = max(rate)
+    )
+  )
+
+year_over_year <- left_join(year_over_year, prices_sparkline_data)
+
+year_over_year %>% 
+  select(Team, `2017 - After June 3`, 
+         `2018`, `2019`, `2020`, `2021`, `After June 3`, 
+         `Change 2021`) %>% 
+  
+datatable(escape=FALSE, filter = 'top', 
+          options = list(paging = FALSE, fnDrawCallback = htmlwidgets::JS(
+  '
+function(){
+  HTMLWidgets.staticRender();
+}
+'
+)
+       )) %>% 
+  spk_add_deps()
+
+#write_csv(year_over_year, "../summarized_data/teams_focus.csv", na="")
+
+```

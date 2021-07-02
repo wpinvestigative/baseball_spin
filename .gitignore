@@ -1,0 +1,71 @@
+# projects in progress
+not_public_yet/*
+
+outputs/findings/01_exploratory_06242021.html
+data/clean_data/combined_2016_2021.csv
+data/clean_data/combined_2017_2021.csv
+data/raw_data/*.csv
+data/raw_data/*.zip
+data/raw_data/Pitchinfo/*.csv
+outputs/graphics_data/slices.csv
+outputs/graphics_data/bauer_curves2.csv
+outputs/graphics_data/bauer_cutter2.csv
+outputs/graphics_data/bauer_fastball2.csv
+outputs/graphics_data/bauer_slide2.csv
+outputs/graphics_data/cole.csv
+outputs/summarized_data/bauer.xlsx
+outputs/summarized_data/cs_ony.csv
+outputs/summarized_data/focus.xlsx
+outputs/summarized_data/focus1.xlsx
+outputs/summarized_data/focus2.xlsx
+outputs/summarized_data/focus3.xlsx
+outputs/summarized_data/focus4.xlsx
+outputs/summarized_data/gerr.xlsx
+outputs/summarized_data/scherzer.xlsx
+outputs/summarized_data/pitchers.xlsx
+outputs/summarized_data/~focus2.xlsx
+outputs/summarized_data/sp_only.csv
+scripts/analysis/temp_code.R
+scripts/analysis/02_exploratory.R
+scripts/analysis/working_code.R
+
+
+
+# .ds_store
+.DS_Store
+
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+.Rproj.user

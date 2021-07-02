@@ -1,0 +1,105 @@
+---
+title: "MLB Pitcher Adjusted Spin Rate Analysis"
+author: "Andrew Ba Tran"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+# install packages if missing
+packages <- c("tidyverse", "shiny", "shinyWidgets", "lubridate")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos = "http://cran.us.r-project.org")  
+}
+
+
+library(tidyverse)
+library(shiny)
+library(shinyWidgets)
+library(lubridate)
+
+#print(getwd())
+pitches_daily <- readRDS("../summarized_data/daily_summarized_pitchers.RDS") %>% 
+  mutate(year=as.factor(year))
+
+pitches_daily$year <- factor(pitches_daily$year, levels = c("2017", "2018", "2019", "2020", "2021"))
+
+pitcher_names <- read_csv("../summarized_data/pitcher_names.csv") %>% 
+  arrange(pitcher_name)
+
+pitch_types <- read_csv("../summarized_data/pitch_types.csv") %>% 
+  filter(!is.na(pitch_type)) %>% 
+  arrange(pitch_type)
+
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+ pickerInput("pitcher_name", label = h3("pitcher"), 
+    choices = pitcher_names,
+    options = list(`live-search`=TRUE),
+    selected = "Gerrit Cole")
+
+ 
+ pickerInput("pitch_type", label = h3("pitch type"), 
+    choices = pitch_types, 
+    options = list(`live-search`=TRUE),
+    selected = "fastball")
+
+```
+
+[How baseball’s war on sticky stuff is already changing the game](https://www.washingtonpost.com)
+
+The Washington Post reviewed MLB footage and analyzed nearly 2 million pitches from data provided by [Baseball Prospectus](https://www.BaseballProspectus.com) since 2017 when spin rates first started being tracked reliably. Details on The Post’s methodology and data can be found on [GitHub](https://github.com/wpinvestigative/baseball_spin).
+
+Row
+-----------------------------------------------------------------------
+
+### Chart
+    
+```{r}
+
+renderPlot({
+  pitches_daily %>% 
+    filter(pitcher_name == input$pitcher_name) %>% 
+    filter(pitch_type==input$pitch_type) %>% 
+  ggplot(aes(x=date_chart, y=adj_spin, group=year, color=year), size=7) +
+   geom_point(size=.5) +
+   geom_vline(xintercept=ymd("2021-06-03")) +
+   geom_smooth(method = "loess", formula = 'y ~ x', se = FALSE) + 
+   labs(title=paste0(input$pitcher_name, " adjusted average spin rate over time"),
+        y="Spin/Velocity", x="Date",
+        caption="Credit: Baseball Prospectus / The Washington Post") +
+   
+  theme_minimal()
+})
+```
+
+
+Row {.tabset}
+-----------------------------------------------------------------------
+
+### Table
+
+```{r}
+# only display table for values in cluster 4
+renderTable(
+  pitches_daily %>% 
+    mutate(game_date=as.character(game_date)) %>% 
+    filter(pitcher_name == input$pitcher_name) %>% 
+    filter(pitch_type==input$pitch_type) %>% 
+    select(Team=pitcher_team,
+           Pitcher=pitcher_name,
+           Year=year,
+           `Game day`=game_date,
+           Type=pitch_type,
+           `Average adjusted spin rate`=adj_spin)
+)
+```
+
